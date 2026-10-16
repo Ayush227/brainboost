@@ -710,31 +710,55 @@ BB.mockLeaderboard = [
       solution: c.trick || c.body,
     }));
 
-    // ── shortcuts: BB.shortcuts filtered by category match ──────
-    const catMap = { reasoning: 'reasoning', math: 'math', vedic: 'vedic' };
-    const topicShortcuts = BB.shortcuts.filter(s => {
-      // Match shortcuts to this topic by category or by title keyword
-      const topicWords = t.title.toLowerCase().split(/\W+/);
-      const shortcutWords = (s.title + ' ' + s.body).toLowerCase();
-      const catMatch = (t.category === 'reasoning' && s.category === 'reasoning') ||
-                       (t.category === 'math' && (s.category === 'math' || s.category === 'vedic'));
-      const titleHit = topicWords.some(w => w.length > 3 && shortcutWords.includes(w));
-      return titleHit;
-    });
-    // Fallback: give every topic 2 generic shortcuts from its category
-    const shortcuts = topicShortcuts.length > 0 ? topicShortcuts :
+    // ── TOPIC MARATHI METADATA ────────────────────────────────
+    const TOPIC_MARATHI_META = {
+      'coding-decoding': { titleMr: 'सांकेतिक भाषा व कूट संकेत', subtitleMr: 'सांकेतिक भाषा व अक्षर-अंक पद्धती' },
+      'blood-relations': { titleMr: 'नातेसंबंध (Blood Relations)', subtitleMr: 'कुटुंब वृक्ष व नातेसंबंध विश्लेषण' },
+      'direction-sense': { titleMr: 'दिशा व अंतर ज्ञान', subtitleMr: 'दिशा, वळणे व पायथागोरस अंतर' },
+      'syllogism': { titleMr: 'तर्कसंगत निष्कर्ष (Syllogism)', subtitleMr: 'वेन आकृत्या व तार्किक निष्कर्ष' },
+      'series-completion': { titleMr: 'संख्या व अक्षर मालिका', subtitleMr: 'अंक व अक्षर मालिका पूर्ण करणे' },
+      'seating-arrangement': { titleMr: 'बैठक व्यवस्था', subtitleMr: 'रेषीय व वर्तुळाकार बैठक व्यवस्था' },
+      'analogy-classification': { titleMr: 'समसंबंध व वर्गीकरण', subtitleMr: 'गटात न बसणारे पद व संबंध ओळखणे' },
+      'clocks-calendars': { titleMr: 'घड्याळ व दिनदर्शिका', subtitleMr: 'वेळ, कोन, दिवस व वार शोधणे' },
+      'puzzles': { titleMr: 'तार्किक कोडी (Logical Puzzles)', subtitleMr: 'मजले, वार व चौकट आधारित कोडी' },
+      'non-verbal': { titleMr: 'अशाब्दिक तर्कक्षमता', subtitleMr: 'आकृत्यांची मालिका, आरसा व घड्या' },
+      'number-system': { titleMr: 'संख्या पद्धती व विभाज्यता', subtitleMr: 'संख्यांचे प्रकार, कसोटी व एकक स्थान' },
+      'bodmas': { titleMr: 'पदावली व सरलीकरण (BODMAS)', subtitleMr: 'कंस, भागाकार, गुणाकार व वर्गमूळ' },
+      'lcm-hcf': { titleMr: 'लसावि व मसावि (LCM & HCF)', subtitleMr: 'लहानात लहान व मोठ्यात मोठी संख्या' },
+      'percentage': { titleMr: 'शेकडेवारी / टक्केवारी', subtitleMr: 'शेकडा वाढ, घट व खरेदी-विक्री संबंध' },
+      'profit-loss': { titleMr: 'नफा, तोटा व सूट (Discount)', subtitleMr: 'खरेदी, विक्री, छापील किंमत व डिस्काउंट' },
+      'average': { titleMr: 'सरासरी (Average)', subtitleMr: 'सरासरी, व्यक्तींची अदलाबदल व गुण' },
+      'ratio-proportion': { titleMr: 'गुणोत्तर व प्रमाण', subtitleMr: 'प्रमाणपदे, नाणी व भागीदारी वाटप' },
+      'time-speed-distance': { titleMr: 'वेळ, वेग, अंतर व रेल्वे', subtitleMr: 'रेल्वे ओलांडणे, सापेक्ष वेग व बोट-प्रवाह' },
+      'time-work': { titleMr: 'काळ, काम व नळ-टाकी', subtitleMr: 'एकत्रित काम, कार्यक्षमता व पाईप टाकी' },
+      'simple-compound-interest': { titleMr: 'सरळव्याज व चक्रवाढव्याज', subtitleMr: 'वार्षिक, सहामाही व्याज व फरक सूत्र' },
+      'permutation-combination': { titleMr: 'क्रमपरिवर्तन, संयोजन व संभाव्यता', subtitleMr: 'मांडणी, निवड, फासा व पत्ते संभाव्यता' },
+      'algebra-geometry': { titleMr: 'बीजगणित, क्षेत्रफळ व घनफळ', subtitleMr: 'बैजिक सूत्रे, त्रिकोण, चौरस व घनफळ' }
+    };
+
+    // ── shortcuts: Dedicated 10 shortcuts per topic from TOPIC_SHORTCUTS ──────
+    const dedicatedShortcuts = (window.TOPIC_SHORTCUTS && window.TOPIC_SHORTCUTS[t.id]) || [];
+    const shortcuts = dedicatedShortcuts.length > 0 ? dedicatedShortcuts : (
       BB.shortcuts.filter(s =>
         t.category === 'reasoning' ? s.category === 'reasoning' :
         (s.category === 'math' || s.category === 'vedic')
-      ).slice(0, 2);
+      ).slice(0, 2)
+    );
 
-    // Normalise shortcuts to { title, content } shape used in renderShortcutsPanel
+    // Normalise shortcuts to rich { title, content, titleMr, contentMr } shape
     const shortcutsNorm = shortcuts.map(s => ({
       ...s,
       content: [
-        s.body,
-        s.formula ? `<div class="formula-box">📐 ${s.formula.replace(/\n/g, '<br>')}</div>` : '',
-        s.example ? `<div class="example-inline">📝 ${s.example.replace(/\n/g, '<br>')}</div>` : ''
+        s.body ? `<div class="shortcut-desc">${s.body}</div>` : '',
+        s.formula ? `<div class="formula-box">📐 <strong>Formula / Rule:</strong><br>${s.formula.replace(/\n/g, '<br>')}</div>` : '',
+        s.example ? `<div class="example-inline">📝 <strong>Example & Shortcut:</strong><br>${s.example.replace(/\n/g, '<br>')}</div>` : '',
+        s.tip ? `<div class="shortcut-tip-box">💡 <strong>Pro Tip:</strong> ${s.tip}</div>` : ''
+      ].filter(Boolean).join(''),
+      contentMr: [
+        s.bodyMr ? `<div class="shortcut-desc">${s.bodyMr}</div>` : (s.body || ''),
+        (s.formulaMr || s.formula) ? `<div class="formula-box">📐 <strong>थेट सूत्र / नियम:</strong><br>${(s.formulaMr || s.formula).replace(/\n/g, '<br>')}</div>` : '',
+        (s.exampleMr || s.example) ? `<div class="example-inline">📝 <strong>परीक्षेतील उदाहरण व जलद रीत:</strong><br>${(s.exampleMr || s.example).replace(/\n/g, '<br>')}</div>` : '',
+        (s.tipMr || s.tip) ? `<div class="shortcut-tip-box">💡 <strong>परीक्षेसाठी महत्त्वाची टीप:</strong> ${s.tipMr || s.tip}</div>` : ''
       ].filter(Boolean).join('')
     }));
 
@@ -758,6 +782,7 @@ BB.mockLeaderboard = [
 
     return {
       ...t,
+      ...(TOPIC_MARATHI_META[t.id] || {}),
       lessons,
       examples,
       shortcuts: shortcutsNorm,

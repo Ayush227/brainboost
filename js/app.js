@@ -30,7 +30,12 @@ function navigate(pageId, topicId = null) {
   else if (pageId === 'bookmarks') renderBookmarks();
   else if (pageId === 'tables') renderTables();
   else if (pageId === 'mpsc-gk') renderMpscGK();
-  else if (pageId === 'topic' && topicId) renderTopicDetail(topicId);
+  else if (pageId === 'topic' && topicId) {
+    if (currentTopicId !== topicId) {
+      currentDetailTab = 'lessons';
+    }
+    renderTopicDetail(topicId);
+  }
 
   window.scrollTo(0, 0);
 }
@@ -50,6 +55,10 @@ function renderHome() {
   document.getElementById('stat-bookmarks').textContent = bookmarkCount;
   document.getElementById('stat-quizzes').textContent = quizzesDone;
   document.getElementById('stat-streak').textContent = STATE.streak + '🔥';
+
+  if (typeof updateAppLabels === 'function') {
+    updateAppLabels(lang);
+  }
 
   // Render topic cards
   renderTopicCards('all', lang);
@@ -126,9 +135,9 @@ function createTopicCard(topic, lang) {
 
       <div class="topic-footer">
         <div class="topic-stats-mini">
-          <span class="topic-stat">⚡ ${topic.shortcuts.length} Tricks</span>
-          <span class="topic-stat">❓ ${topic.quizzes.length} Quiz</span>
-          <span class="topic-stat">🃏 ${topic.flashcards.length} Cards</span>
+          <span class="topic-stat">⚡ ${(topic.shortcuts && topic.shortcuts.length) || 10} ${lang === 'mr' ? 'ट्रिक्स' : 'Tricks'}</span>
+          <span class="topic-stat">❓ ${topic.quizzes.length} ${lang === 'mr' ? 'प्रश्न' : 'Quiz'}</span>
+          <span class="topic-stat">🃏 ${topic.flashcards.length} ${lang === 'mr' ? 'कार्ड्स' : 'Cards'}</span>
         </div>
         <button class="bookmark-btn" data-topic-id="${topic.id}">
           ${bookmarked ? '★' : '☆'}
@@ -157,11 +166,12 @@ function renderTopicDetail(topicId) {
   const page = document.getElementById('page-topic');
   const title = lang === 'mr' && topic.titleMr ? topic.titleMr : topic.title;
   const subtitle = lang === 'mr' && topic.subtitleMr ? topic.subtitleMr : topic.subtitle;
+  const activeTab = currentDetailTab || 'lessons';
 
   page.innerHTML = `
     <div class="detail-header" data-emoji="${topic.icon}">
       <button class="back-btn" onclick="navigate('home')">
-        ← Back to Topics
+        ${lang === 'mr' ? '← सर्व विषयांकडे परत' : '← Back to Topics'}
       </button>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">
         <span style="font-size:2rem">${topic.icon}</span>
@@ -172,19 +182,19 @@ function renderTopicDetail(topicId) {
         <span class="topic-badge badge-${topic.difficulty.toLowerCase()}" style="margin-left:auto">${topic.difficulty}</span>
       </div>
       <div class="detail-tabs" id="detail-tabs">
-        <button class="detail-tab active" data-panel="lessons" onclick="switchTab('lessons')">📚 Lessons</button>
-        <button class="detail-tab" data-panel="shortcuts" onclick="switchTab('shortcuts')">⚡ Shortcuts</button>
-        <button class="detail-tab" data-panel="examples" onclick="switchTab('examples')">💡 Examples</button>
-        <button class="detail-tab" data-panel="quiz" onclick="switchTab('quiz')">❓ Quiz</button>
-        <button class="detail-tab" data-panel="flashcards" onclick="switchTab('flashcards')">🃏 Flashcards</button>
+        <button class="detail-tab ${activeTab === 'lessons' ? 'active' : ''}" data-panel="lessons" onclick="switchTab('lessons')">${lang === 'mr' ? '📚 धडे' : '📚 Lessons'}</button>
+        <button class="detail-tab ${activeTab === 'shortcuts' ? 'active' : ''}" data-panel="shortcuts" onclick="switchTab('shortcuts')">${lang === 'mr' ? '⚡ शॉर्टकट ट्रिक्स' : '⚡ Shortcuts'}</button>
+        <button class="detail-tab ${activeTab === 'examples' ? 'active' : ''}" data-panel="examples" onclick="switchTab('examples')">${lang === 'mr' ? '💡 उदाहरणे' : '💡 Examples'}</button>
+        <button class="detail-tab ${activeTab === 'quiz' ? 'active' : ''}" data-panel="quiz" onclick="switchTab('quiz')">${lang === 'mr' ? '❓ सराव चाचणी' : '❓ Quiz'}</button>
+        <button class="detail-tab ${activeTab === 'flashcards' ? 'active' : ''}" data-panel="flashcards" onclick="switchTab('flashcards')">${lang === 'mr' ? '🃏 फ्लॅशकार्ड्स' : '🃏 Flashcards'}</button>
       </div>
     </div>
 
-    <div id="panel-lessons" class="tab-panel active">${renderLessonsPanel(topic, lang)}</div>
-    <div id="panel-shortcuts" class="tab-panel">${renderShortcutsPanel(topic, lang)}</div>
-    <div id="panel-examples" class="tab-panel">${renderExamplesPanel(topic, lang)}</div>
-    <div id="panel-quiz" class="tab-panel">${renderQuizPanel(topic, lang)}</div>
-    <div id="panel-flashcards" class="tab-panel">${renderFlashcardsPanel(topic, lang)}</div>
+    <div id="panel-lessons" class="tab-panel ${activeTab === 'lessons' ? 'active' : ''}">${renderLessonsPanel(topic, lang)}</div>
+    <div id="panel-shortcuts" class="tab-panel ${activeTab === 'shortcuts' ? 'active' : ''}">${renderShortcutsPanel(topic, lang)}</div>
+    <div id="panel-examples" class="tab-panel ${activeTab === 'examples' ? 'active' : ''}">${renderExamplesPanel(topic, lang)}</div>
+    <div id="panel-quiz" class="tab-panel ${activeTab === 'quiz' ? 'active' : ''}">${renderQuizPanel(topic, lang)}</div>
+    <div id="panel-flashcards" class="tab-panel ${activeTab === 'flashcards' ? 'active' : ''}">${renderFlashcardsPanel(topic, lang)}</div>
   `;
 
   // Mark complete FAB
@@ -192,14 +202,20 @@ function renderTopicDetail(topicId) {
   const fab = document.createElement('button');
   fab.className = `mark-complete-btn ${isCompleted ? 'completed' : ''}`;
   fab.id = 'mark-complete-fab';
-  fab.innerHTML = isCompleted ? '✅ Completed' : '✓ Mark Complete';
+  fab.innerHTML = isCompleted 
+    ? (lang === 'mr' ? '✅ पूर्ण झाले' : '✅ Completed') 
+    : (lang === 'mr' ? '✓ पूर्ण म्हणून नोंदवा' : '✓ Mark Complete');
   fab.onclick = () => {
     markTopicComplete(topicId);
     fab.className = 'mark-complete-btn completed';
-    fab.innerHTML = '✅ Completed';
-    showToast('🎉 Topic marked as complete!', 'success');
+    fab.innerHTML = lang === 'mr' ? '✅ पूर्ण झाले' : '✅ Completed';
+    showToast(lang === 'mr' ? '🎉 विषय पूर्ण म्हणून नोंदवला गेला!' : '🎉 Topic marked as complete!', 'success');
   };
   document.body.appendChild(fab);
+
+  if (activeTab === 'quiz') {
+    fab.style.display = 'none';
+  }
 
   // Init quiz
   initQuiz(topic, lang);
@@ -208,11 +224,14 @@ function renderTopicDetail(topicId) {
 }
 
 function switchTab(panel) {
+  currentDetailTab = panel;
   document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
 
-  document.querySelector(`.detail-tab[data-panel="${panel}"]`).classList.add('active');
-  document.getElementById(`panel-${panel}`).classList.add('active');
+  const tabBtn = document.querySelector(`.detail-tab[data-panel="${panel}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+  const panelElem = document.getElementById(`panel-${panel}`);
+  if (panelElem) panelElem.classList.add('active');
 
   const fab = document.getElementById('mark-complete-fab');
   if (fab) {
@@ -327,16 +346,84 @@ function renderLessonsPanel(topic, lang) {
 }
 
 function renderShortcutsPanel(topic, lang) {
-  return topic.shortcuts.map((s, i) => {
-    const stitle = lang === 'mr' && s.titleMr ? s.titleMr : s.title;
-    const scontent = lang === 'mr' && s.contentMr ? s.contentMr : s.content;
+  const isMr = lang === 'mr';
+  const list = (window.TOPIC_SHORTCUTS && window.TOPIC_SHORTCUTS[topic.id] && window.TOPIC_SHORTCUTS[topic.id].length > 0)
+    ? window.TOPIC_SHORTCUTS[topic.id]
+    : (topic.shortcuts || []);
+
+  const titleText = isMr && topic.titleMr ? topic.titleMr : topic.title;
+
+  const headerHtml = `
+    <div class="shortcuts-main-header">
+      <div class="shortcuts-badge">⚡ ${isMr ? '१० परीक्षेसाठी थेट शॉर्टकट ट्रिक्स' : '10 EXAM SHORTCUT TRICKS'}</div>
+      <h2 class="shortcuts-title">${isMr ? `${titleText} वरील १० अचूक व जलद ट्रिक्स` : `10 High-Yield Shortcut Tricks for ${topic.title}`}</h2>
+      <p class="shortcuts-subtitle">${isMr ? 'MPSC, तलाठी, पोलीस भरती व इतर स्पर्धा परीक्षांसाठी वेळेची बचत करणाऱ्या ३ ते ५ सेकंदांत उत्तरे काढण्याच्या ट्रिक्स व थेट सूत्रे:' : 'Time-saving 3 to 5-second problem-solving shortcuts, direct formulas, and high-yield exam tricks:'}</p>
+    </div>
+  `;
+
+  if (!list || list.length === 0) {
+    return headerHtml + `<div class="empty-state">${isMr ? 'या घटकासाठी लवकरच अधिक ट्रिक्स जोडल्या जातील.' : 'Shortcuts are being updated.'}</div>`;
+  }
+
+  const cardsHtml = list.map((s, i) => {
+    const stitle = isMr && s.titleMr ? s.titleMr : s.title;
+    const sbody = isMr && s.bodyMr ? s.bodyMr : s.body;
+    const sformula = isMr && s.formulaMr ? s.formulaMr : s.formula;
+    const sexample = isMr && s.exampleMr ? s.exampleMr : s.example;
+    const stip = isMr && s.tipMr ? s.tipMr : s.tip;
+
+    let bodyBlock = '';
+    if (sbody) {
+      bodyBlock = `<div class="shortcut-desc">${formatMathText(sbody)}</div>`;
+    }
+    let formulaBlock = '';
+    if (sformula) {
+      formulaBlock = `
+        <div class="shortcut-formula-box">
+          <div class="shortcut-box-label">📐 <strong>${isMr ? 'थेट सूत्र / नियम (Core Rule):' : 'Core Rule & Shortcut Formula:'}</strong></div>
+          <div class="shortcut-box-content">${formatMathText(sformula)}</div>
+        </div>
+      `;
+    }
+    let exampleBlock = '';
+    if (sexample) {
+      exampleBlock = `
+        <div class="shortcut-example-box">
+          <div class="shortcut-box-label">📝 <strong>${isMr ? 'परीक्षेतील उदाहरण व जलद रीत (Exam Example & Solution):' : 'Exam Example & 3-Sec Solution:'}</strong></div>
+          <div class="shortcut-box-content">${formatMathText(sexample)}</div>
+        </div>
+      `;
+    }
+    let tipBlock = '';
+    if (stip) {
+      tipBlock = `
+        <div class="shortcut-tip-box">
+          <div class="shortcut-box-label">💡 <strong>${isMr ? 'परीक्षेसाठी महत्त्वाची टीप (Exam Pro Tip):' : 'Exam Pro Tip:'}</strong></div>
+          <div class="shortcut-box-content">${formatMathText(stip)}</div>
+        </div>
+      `;
+    }
+
+    const rawContent = isMr && s.contentMr ? s.contentMr : s.content;
+
     return `
       <div class="shortcut-card">
-        <div class="shortcut-title">${stitle}</div>
-        <div class="shortcut-content">${scontent}</div>
+        <div class="shortcut-card-top">
+          <span class="shortcut-pill">${isMr ? 'ट्रिक ' + (i + 1) + ' / १०' : 'Trick ' + (i + 1) + ' of 10'}</span>
+          <span class="shortcut-speed-tag">⚡ 3-Sec Solve</span>
+        </div>
+        <h3 class="shortcut-title">${formatMathText(stitle)}</h3>
+        <div class="shortcut-body-wrap">
+          ${bodyBlock || (rawContent ? `<div class="shortcut-content">${rawContent}</div>` : '')}
+          ${formulaBlock}
+          ${exampleBlock}
+          ${tipBlock}
+        </div>
       </div>
     `;
   }).join('');
+
+  return headerHtml + `<div class="shortcuts-grid">${cardsHtml}</div>`;
 }
 
 function renderExamplesPanel(topic, lang) {
@@ -924,6 +1011,81 @@ function renderBookmarks() {
 }
 
 // ==========================================
+// APP LABELS LOCALIZATION
+// ==========================================
+function updateAppLabels(lang) {
+  const isMr = lang === 'mr';
+
+  // Bottom navigation
+  const navHome = document.querySelector('.nav-item[data-page="home"] .nav-label');
+  if (navHome) navHome.textContent = isMr ? 'मुख्य' : 'Home';
+  const navMpsc = document.querySelector('.nav-item[data-page="mpsc-gk"] .nav-label');
+  if (navMpsc) navMpsc.textContent = isMr ? 'जीएस रिव्हिजन' : 'MPSC GK';
+  const navTables = document.querySelector('.nav-item[data-page="tables"] .nav-label');
+  if (navTables) navTables.textContent = isMr ? 'संदर्भ' : 'Reference';
+  const navExplore = document.querySelector('.nav-item[data-page="explore"] .nav-label');
+  if (navExplore) navExplore.textContent = isMr ? 'शोधा' : 'Explore';
+  const navProgress = document.querySelector('.nav-item[data-page="progress"] .nav-label');
+  if (navProgress) navProgress.textContent = isMr ? 'प्रगती' : 'Progress';
+
+  // Home Page hero
+  const heroGreeting = document.querySelector('.hero-greeting');
+  if (heroGreeting) heroGreeting.textContent = isMr ? 'स्वागत आहे 👋' : 'Welcome Back 👋';
+
+  const heroTitle = document.querySelector('.hero-title');
+  if (heroTitle) {
+    heroTitle.innerHTML = isMr 
+      ? 'परिपूर्ण <span class="gradient-text">बुद्धिमत्ता</span><br/>व <span class="gradient-text">अंकगणित</span> तयारी' 
+      : 'Master <span class="gradient-text">Reasoning</span><br/>& <span class="gradient-text">Mathematics</span>';
+  }
+
+  const heroSub = document.querySelector('.hero-subtitle');
+  if (heroSub) heroSub.textContent = isMr ? 'शॉर्टकट ट्रिक्स • सूत्रे • सराव चाचण्या • फ्लॅशकार्ड्स' : 'Shortcuts • Tricks • Quizzes • Flashcards';
+
+  // Stat labels
+  const statLabels = document.querySelectorAll('.stats-row .stat-label');
+  if (statLabels && statLabels.length >= 3) {
+    statLabels[0].textContent = isMr ? 'पूर्ण विषय' : 'Topics Done';
+    statLabels[1].textContent = isMr ? 'जतन केलेले' : 'Bookmarked';
+    statLabels[2].textContent = isMr ? 'चाचण्या' : 'Quizzes';
+  }
+
+  // MPSC Home Banner
+  const mpscBadge = document.querySelector('.mpsc-banner-badge');
+  if (mpscBadge) mpscBadge.textContent = isMr ? '🎯 MPSC प्रिलिम्स व तलाठी २०२४–२५' : '🎯 MPSC Prelims & Talathi 2024–25';
+
+  const mpscTitle = document.querySelector('.mpsc-banner-title');
+  if (mpscTitle) mpscTitle.textContent = isMr ? '🏛️ सामान्य अध्ययन रिव्हिजन (GS Booster)' : '🏛️ General Studies Booster (GS)';
+
+  const mpscSub = document.querySelector('.mpsc-banner-sub');
+  if (mpscSub) mpscSub.textContent = isMr ? 'इतिहास • भूगोल • अर्थव्यवस्था • राज्यशास्त्र • सामान्य विज्ञान' : 'History • Geography • Economy & Budget • Polity • General Science';
+
+  const mpscFeatures = document.querySelectorAll('.mpsc-banner-features .mpsc-pill');
+  if (mpscFeatures && mpscFeatures.length >= 3) {
+    mpscFeatures[0].textContent = isMr ? '⚡ अतिसंभाव्य वन-लाइनर्स' : '⚡ High-Yield One-Liners';
+    mpscFeatures[1].textContent = isMr ? '💡 स्मरण ट्रिक्स' : '💡 Mnemonic Short Tricks';
+    mpscFeatures[2].textContent = isMr ? '🎴 ३D फ्लॅशकार्ड्स' : '🎴 Exam Flashcards';
+  }
+
+  // Section title & subtitle
+  const secTitle = document.querySelector('#page-home .section-title');
+  if (secTitle) secTitle.textContent = isMr ? '📚 सर्व विषय व सराव चाचण्या' : '📚 Topics & Quizzes';
+  const secSub = document.querySelector('#page-home .section-subtitle');
+  if (secSub) secSub.textContent = isMr ? '२२ विषय • १००% मराठी-इंग्रजी थेट शॉर्टकट्स' : '20 Topics • AI Practice Generator';
+
+  // Category filter tabs
+  const catTabs = document.querySelectorAll('.cat-tab');
+  catTabs.forEach(tab => {
+    const filter = tab.dataset.filter;
+    if (filter === 'all') tab.textContent = isMr ? '🌟 सर्व विषय' : '🌟 All Topics';
+    else if (filter === 'reasoning') tab.textContent = isMr ? '🧩 बुद्धिमत्ता' : '🧩 Reasoning';
+    else if (filter === 'mathematics') tab.textContent = isMr ? '🔢 अंकगणित' : '🔢 Mathematics';
+    else if (filter === 'bookmarked') tab.textContent = isMr ? '⭐ जतन केलेले' : '⭐ Saved';
+  });
+}
+window.updateAppLabels = updateAppLabels;
+
+// ==========================================
 // LANGUAGE TOGGLE
 // ==========================================
 function toggleLang() {
@@ -935,12 +1097,23 @@ function toggleLang() {
   const btn = document.getElementById('lang-btn');
   if (btn) btn.textContent = STATE.lang === 'mr' ? 'मराठी ✓' : 'Marathi';
 
-  // Re-render current page
+  updateAppLabels(STATE.lang);
+
+  // Re-render current page smoothly without jump
   const activePage = document.querySelector('.page.active');
   if (activePage) {
     const pid = activePage.id.replace('page-', '');
-    if (pid === 'topic') renderTopicDetail(currentTopicId);
-    else navigate(pid);
+    if (pid === 'topic') {
+      renderTopicDetail(currentTopicId);
+    } else if (pid === 'mpsc-gk') {
+      const scrollY = window.scrollY;
+      renderMpscGK();
+      window.scrollTo(0, scrollY);
+    } else if (pid === 'home') {
+      renderHome();
+    } else {
+      navigate(pid);
+    }
   }
 }
 
@@ -2084,6 +2257,15 @@ function buildCountingFiguresPanel() {
 // ==========================================
 // MPSC / TALATHI GENERAL STUDIES BOOSTER
 // ==========================================
+const GS_SUBJECTS = {
+  all: { en: 'All', mr: 'सर्व', icon: '🌟' },
+  history: { en: 'History', mr: 'इतिहास', icon: '📜' },
+  geography: { en: 'Geography', mr: 'भूगोल', icon: '🗺️' },
+  economy: { en: 'Economy', mr: 'अर्थव्यवस्था', icon: '💰' },
+  polity: { en: 'Polity', mr: 'राज्यशास्त्र', icon: '⚖️' },
+  science: { en: 'Science', mr: 'सामान्य विज्ञान', icon: '🔬' }
+};
+
 let mpscActiveMode = 'oneliners';
 let mpscActiveFilter = 'all';
 let mpscSearchQuery = '';
@@ -2093,40 +2275,66 @@ let mpscCardFlipped = false;
 function renderMpscGK() {
   const page = document.getElementById('page-mpsc-gk');
   if (!page) return;
+  const isMr = STATE.lang === 'mr';
+
+  const badgeText = isMr ? '🎯 MPSC प्रिलिम्स व तलाठी भरती रिव्हिजन' : '🎯 MPSC Prelims & Talathi Exam Booster';
+  const pageTitle = isMr ? '🏛️ सामान्य अध्ययन रिव्हिजन (GS)' : '🏛️ General Studies Revision';
+  const pageDesc = isMr 
+    ? 'अतिसंभाव्य वन-लाइनर्स, स्मरण ट्रिक्स आणि ३D फ्लॅशकार्ड्स (मराठी व इंग्रजी)' 
+    : 'High-Yield One-Liners, Mnemonic Short Tricks & 3D Flashcards for Maharashtra Exams';
+  const toggleBtnText = isMr ? 'English आवृत्ती' : 'मराठी आवृत्ती';
+
+  const modeOneLinersText = isMr ? 'वन-लाइनर्स' : 'One-Liners';
+  const modeTricksText = isMr ? 'स्मरण ट्रिक्स' : 'Short Tricks';
+  const modeFlashcardsText = isMr ? '३D फ्लॅशकार्ड्स' : '3D Flashcards';
+
+  const searchPlaceholder = isMr 
+    ? '🔍 परीक्षेचे महत्त्वाचे तथ्य शोधा (उदा. सत्यशोधक, कळसूबाई, GST, कलम ३२)...' 
+    : '🔍 Search exam facts (e.g. Satyashodhak, Kalsubai, GST, Article 32)...';
+
+  const subjects = ['all', 'history', 'geography', 'economy', 'polity', 'science'];
 
   page.innerHTML = `
     <div class="mpsc-header">
-      <div class="mpsc-header-badge">🎯 MPSC Prelims & Talathi Exam Booster</div>
-      <div class="page-title">🏛️ General Studies Revision</div>
-      <div class="page-desc">High-Yield One-Liners, Mnemonic Short Tricks & 3D Flashcards for Maharashtra Exams</div>
+      <div class="mpsc-header-top">
+        <div class="mpsc-header-badge">${badgeText}</div>
+        <button class="mpsc-lang-toggle-btn" onclick="toggleLang()" title="Toggle English / Marathi">
+          <span>🌐</span> <span>${toggleBtnText}</span>
+        </button>
+      </div>
+      <div class="page-title">${pageTitle}</div>
+      <div class="page-desc">${pageDesc}</div>
     </div>
 
     <!-- Mode Selector: One-Liners | Short Tricks | Flashcards -->
     <div class="mpsc-mode-tabs">
       <button class="mpsc-mode-btn ${mpscActiveMode === 'oneliners' ? 'active' : ''}" onclick="switchMpscMode('oneliners')">
-        <span>⚡</span> <span>One-Liners</span>
+        <span>⚡</span> <span>${modeOneLinersText}</span>
       </button>
       <button class="mpsc-mode-btn ${mpscActiveMode === 'tricks' ? 'active' : ''}" onclick="switchMpscMode('tricks')">
-        <span>💡</span> <span>Short Tricks</span>
+        <span>💡</span> <span>${modeTricksText}</span>
       </button>
       <button class="mpsc-mode-btn ${mpscActiveMode === 'flashcards' ? 'active' : ''}" onclick="switchMpscMode('flashcards')">
-        <span>🎴</span> <span>3D Flashcards</span>
+        <span>🎴</span> <span>${modeFlashcardsText}</span>
       </button>
     </div>
 
     <!-- Subject Filters -->
     <div class="mpsc-subject-filters">
-      <button class="mpsc-sub-pill ${mpscActiveFilter === 'all' ? 'active' : ''}" onclick="filterMpscSubject('all')">🌟 All</button>
-      <button class="mpsc-sub-pill ${mpscActiveFilter === 'history' ? 'active' : ''}" onclick="filterMpscSubject('history')">📜 History</button>
-      <button class="mpsc-sub-pill ${mpscActiveFilter === 'geography' ? 'active' : ''}" onclick="filterMpscSubject('geography')">🗺️ Geography</button>
-      <button class="mpsc-sub-pill ${mpscActiveFilter === 'economy' ? 'active' : ''}" onclick="filterMpscSubject('economy')">💰 Economy</button>
-      <button class="mpsc-sub-pill ${mpscActiveFilter === 'polity' ? 'active' : ''}" onclick="filterMpscSubject('polity')">⚖️ Polity</button>
-      <button class="mpsc-sub-pill ${mpscActiveFilter === 'science' ? 'active' : ''}" onclick="filterMpscSubject('science')">🔬 Science</button>
+      ${subjects.map(s => {
+        const item = GS_SUBJECTS[s] || { en: s, mr: s, icon: '📌' };
+        const label = isMr ? item.mr : item.en;
+        return `
+          <button class="mpsc-sub-pill ${mpscActiveFilter === s ? 'active' : ''}" onclick="filterMpscSubject('${s}')">
+            ${item.icon} ${label}
+          </button>
+        `;
+      }).join('')}
     </div>
 
     <!-- Live Search (visible in oneliners mode) -->
     <div class="mpsc-search-wrap" id="mpsc-search-wrap" style="${mpscActiveMode === 'oneliners' ? 'display:block;' : 'display:none;'}">
-      <input type="text" class="mpsc-search-input" id="mpsc-search-input" placeholder="🔍 Search exam facts (e.g. Satyashodhak, Kalsubai, GST, Article 32)..." value="${mpscSearchQuery}" oninput="handleMpscSearch(this.value)">
+      <input type="text" class="mpsc-search-input" id="mpsc-search-input" placeholder="${searchPlaceholder}" value="${mpscSearchQuery}" oninput="handleMpscSearch(this.value)">
     </div>
 
     <!-- Active View Container -->
@@ -2183,123 +2391,177 @@ function renderMpscContent() {
 }
 
 function renderGSOneLiners(container) {
+  const isMr = STATE.lang === 'mr';
   let list = window.MPSC_GS.oneLiners || [];
   if (mpscActiveFilter !== 'all') {
     list = list.filter(item => item.subject === mpscActiveFilter);
   }
   if (mpscSearchQuery) {
     list = list.filter(item =>
-      item.mr.toLowerCase().includes(mpscSearchQuery) ||
-      item.en.toLowerCase().includes(mpscSearchQuery) ||
-      item.tag.toLowerCase().includes(mpscSearchQuery) ||
+      (item.mr && item.mr.toLowerCase().includes(mpscSearchQuery)) ||
+      (item.en && item.en.toLowerCase().includes(mpscSearchQuery)) ||
+      (item.tag && item.tag.toLowerCase().includes(mpscSearchQuery)) ||
       (item.highlight && item.highlight.toLowerCase().includes(mpscSearchQuery))
     );
   }
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="empty-state">🔍 No exam one-liners found matching "${mpscSearchQuery}". Try another keyword!</div>`;
+    const emptyMsg = isMr
+      ? `🔍 "${mpscSearchQuery}" या शब्दाशी जुळणारे कोणतेही तथ्य सापडले नाही. कृपया दुसरा शब्द शोधा!`
+      : `🔍 No exam one-liners found matching "${mpscSearchQuery}". Try another keyword!`;
+    container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
     return;
   }
 
   const icons = { history: '📜', geography: '🗺️', economy: '💰', polity: '⚖️', science: '🔬' };
+  const countBadgeText = isMr
+    ? `⚡ ${list.length} अतिसंभाव्य परीक्षेचे तथ्य उपलब्ध`
+    : `Showing ${list.length} Exam High-Yield Facts`;
 
   container.innerHTML = `
-    <div class="mpsc-count-badge">Showing ${list.length} Exam High-Yield Facts</div>
+    <div class="mpsc-count-badge">${countBadgeText}</div>
     <div class="oneliners-grid">
-      ${list.map(item => `
-        <div class="oneliner-card">
-          <div class="oneliner-header">
-            <span class="oneliner-sub-tag sub-${item.subject}">${icons[item.subject] || '📌'} ${item.tag}</span>
-            <span class="oneliner-exam-tag">🎯 ${item.examYear || 'Exam Favorite'}</span>
+      ${list.map(item => {
+        const subName = isMr 
+          ? (GS_SUBJECTS[item.subject]?.mr || item.subject) 
+          : (GS_SUBJECTS[item.subject]?.en || item.subject);
+        const examLabel = item.examYear || (isMr ? 'परीक्षेचा आवडता प्रश्न' : 'Exam Favorite');
+        const primaryText = isMr ? item.mr : item.en;
+        const secondaryText = isMr ? item.en : item.mr;
+        const recallLabel = isMr ? 'महत्त्वाचा मुद्दा' : 'Key Recall';
+
+        return `
+          <div class="oneliner-card">
+            <div class="oneliner-header">
+              <span class="oneliner-sub-tag sub-${item.subject}">${icons[item.subject] || '📌'} ${subName} • ${item.tag}</span>
+              <span class="oneliner-exam-tag">🎯 ${examLabel}</span>
+            </div>
+            <div class="oneliner-primary">${primaryText}</div>
+            <div class="oneliner-secondary">${secondaryText}</div>
+            ${item.highlight ? `<div class="oneliner-highlight">⚡ <strong>${recallLabel}:</strong> ${item.highlight}</div>` : ''}
           </div>
-          <div class="oneliner-mr">${item.mr}</div>
-          <div class="oneliner-en">${item.en}</div>
-          ${item.highlight ? `<div class="oneliner-highlight">⚡ <strong>Key Recall:</strong> ${item.highlight}</div>` : ''}
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 }
 
 function renderGSTricks(container) {
+  const isMr = STATE.lang === 'mr';
   let list = window.MPSC_GS.shortTricks || [];
   if (mpscActiveFilter !== 'all') {
     list = list.filter(item => item.subject === mpscActiveFilter);
   }
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="empty-state">No short tricks in this category yet. Select 'All' to see all mnemonics!</div>`;
+    const emptyMsg = isMr
+      ? `या विषयात अद्याप ट्रिक्स उपलब्ध नाहीत. सर्व ट्रिक्स पाहण्यासाठी 'सर्व' निवडा!`
+      : `No short tricks in this category yet. Select 'All' to see all mnemonics!`;
+    container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
     return;
   }
 
+  const countBadgeText = isMr
+    ? `⚡ ${list.length} स्मरण ट्रिक्स आणि सूत्रे उपलब्ध`
+    : `Showing ${list.length} Memory Mnemonics & Tricks`;
+
   container.innerHTML = `
-    <div class="mpsc-count-badge">Showing ${list.length} Memory Mnemonics & Tricks</div>
+    <div class="mpsc-count-badge">${countBadgeText}</div>
     <div class="tricks-grid">
-      ${list.map(t => `
-        <div class="gs-trick-card">
-          <div class="gs-trick-header">
-            <div class="gs-trick-title">${t.title}</div>
-            <div class="gs-trick-title-en">${t.titleEn}</div>
+      ${list.map(t => {
+        const primaryTitle = isMr ? t.title : (t.titleEn || t.title);
+        const secondaryTitle = isMr ? t.titleEn : t.title;
+        const trickLabel = isMr ? 'स्मरण ट्रिक:' : 'Magic Trick:';
+        const noteLabel = isMr ? 'परीक्षेसाठी टीप:' : 'Exam Note:';
+
+        return `
+          <div class="gs-trick-card">
+            <div class="gs-trick-header">
+              <div class="gs-trick-title">${primaryTitle}</div>
+              ${secondaryTitle ? `<div class="gs-trick-title-en">${secondaryTitle}</div>` : ''}
+            </div>
+            <div class="gs-trick-banner">
+              <span class="trick-key-label">⚡ ${trickLabel}</span>
+              <span class="trick-key-val">${t.trick}</span>
+            </div>
+            <div class="gs-trick-body">${t.explanation}</div>
+            ${t.examNote ? `<div class="gs-trick-note">💡 <strong>${noteLabel}</strong> ${t.examNote}</div>` : ''}
           </div>
-          <div class="gs-trick-banner">
-            <span class="trick-key-label">⚡ Magic Trick:</span>
-            <span class="trick-key-val">${t.trick}</span>
-          </div>
-          <div class="gs-trick-body">${t.explanation}</div>
-          ${t.examNote ? `<div class="gs-trick-note">💡 <strong>परीक्षेसाठी टीप:</strong> ${t.examNote}</div>` : ''}
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 }
 
 function renderGSFlashcards(container) {
+  const isMr = STATE.lang === 'mr';
   let list = window.MPSC_GS.flashcards || [];
   if (mpscActiveFilter !== 'all') {
     list = list.filter(item => item.subject === mpscActiveFilter);
   }
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="empty-state">No flashcards found for this subject.</div>`;
+    const emptyMsg = isMr
+      ? `या विषयासाठी फ्लॅशकार्ड्स उपलब्ध नाहीत.`
+      : `No flashcards found for this subject.`;
+    container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
     return;
   }
 
   if (mpscCardIndex >= list.length) mpscCardIndex = 0;
   const card = list[mpscCardIndex];
   const icons = { history: '📜', geography: '🗺️', economy: '💰', polity: '⚖️', science: '🔬' };
+  const subLabel = isMr 
+    ? (GS_SUBJECTS[card.subject]?.mr || card.subject) 
+    : (GS_SUBJECTS[card.subject]?.en || card.subject.toUpperCase());
+
+  const cardCounter = isMr 
+    ? `कार्ड ${mpscCardIndex + 1} / ${list.length}` 
+    : `Card ${mpscCardIndex + 1} of ${list.length}`;
+
+  const qLabel = isMr ? '❓ प्रश्न (QUESTION)' : '❓ QUESTION (प्रश्न)';
+  const aLabel = isMr ? '✓ उत्तर (ANSWER)' : '✓ ANSWER (उत्तर)';
+  const frontHint = isMr ? '👆 उत्तर पाहण्यासाठी टॅप करा (Tap to Reveal)' : '👆 Tap to Reveal Answer';
+  const backHint = isMr ? '👆 प्रश्न पुन्हा पाहण्यासाठी टॅप करा (Tap to Flip)' : '👆 Tap to Flip back';
+  const noteLabel = isMr ? 'परीक्षेसाठी टीप:' : 'Exam Note:';
+
+  const qPrimary = isMr ? card.q : (card.qEn || card.q);
+  const qSecondary = isMr ? (card.qEn || '') : (card.q || '');
+  const aPrimary = isMr ? card.a : (card.aEn || card.a);
+  const aSecondary = isMr ? (card.aEn || '') : (card.a || '');
 
   container.innerHTML = `
     <div class="mpsc-fc-wrap">
       <div class="mpsc-fc-header">
-        <span class="mpsc-fc-badge">${icons[card.subject] || '📌'} ${card.subject.toUpperCase()}</span>
-        <span class="mpsc-fc-counter">Card ${mpscCardIndex + 1} of ${list.length}</span>
+        <span class="mpsc-fc-badge">${icons[card.subject] || '📌'} ${subLabel}</span>
+        <span class="mpsc-fc-counter">${cardCounter}</span>
       </div>
 
       <div class="mpsc-fc-card ${mpscCardFlipped ? 'flipped' : ''}" onclick="flipMpscCard()">
         <div class="mpsc-fc-inner">
           <!-- Front -->
           <div class="mpsc-fc-front">
-            <div class="mpsc-fc-side-label">❓ QUESTION (प्रश्न)</div>
-            <div class="mpsc-fc-q-mr">${card.q}</div>
-            <div class="mpsc-fc-q-en">${card.qEn}</div>
-            <div class="mpsc-fc-hint">👆 Tap to Reveal Answer (उत्तर पाहण्यासाठी टॅप करा)</div>
+            <div class="mpsc-fc-side-label">${qLabel}</div>
+            <div class="mpsc-fc-q-primary">${qPrimary}</div>
+            ${qSecondary ? `<div class="mpsc-fc-q-secondary">${qSecondary}</div>` : ''}
+            <div class="mpsc-fc-hint">${frontHint}</div>
           </div>
           <!-- Back -->
           <div class="mpsc-fc-back">
-            <div class="mpsc-fc-side-label">✓ ANSWER (उत्तर)</div>
-            <div class="mpsc-fc-a-mr">${card.a}</div>
-            <div class="mpsc-fc-a-en">${card.aEn}</div>
-            ${card.tip ? `<div class="mpsc-fc-tip">💡 <strong>Exam Note:</strong> ${card.tip}</div>` : ''}
-            <div class="mpsc-fc-hint">👆 Tap to Flip back</div>
+            <div class="mpsc-fc-side-label">${aLabel}</div>
+            <div class="mpsc-fc-a-primary">${aPrimary}</div>
+            ${aSecondary ? `<div class="mpsc-fc-a-secondary">${aSecondary}</div>` : ''}
+            ${card.tip ? `<div class="mpsc-fc-tip">💡 <strong>${noteLabel}</strong> ${card.tip}</div>` : ''}
+            <div class="mpsc-fc-hint">${backHint}</div>
           </div>
         </div>
       </div>
 
       <div class="mpsc-fc-controls">
-        <button class="fc-btn" onclick="prevMpscCard()"><span class="fc-btn-icon">◀</span> Previous</button>
-        <button class="fc-btn fc-btn-flip" onclick="flipMpscCard()"><span class="fc-btn-icon">🔄</span> Flip</button>
-        <button class="fc-btn fc-btn-shuffle" onclick="shuffleMpscCards()"><span class="fc-btn-icon">🔀</span> Shuffle</button>
-        <button class="fc-btn" onclick="nextMpscCard()">Next <span class="fc-btn-icon">▶</span></button>
+        <button class="fc-btn" onclick="prevMpscCard()"><span class="fc-btn-icon">◀</span> ${isMr ? 'मागे' : 'Previous'}</button>
+        <button class="fc-btn fc-btn-flip" onclick="flipMpscCard()"><span class="fc-btn-icon">🔄</span> ${isMr ? 'उलटवा' : 'Flip'}</button>
+        <button class="fc-btn fc-btn-shuffle" onclick="shuffleMpscCards()"><span class="fc-btn-icon">🔀</span> ${isMr ? 'रॅन्डम' : 'Shuffle'}</button>
+        <button class="fc-btn" onclick="nextMpscCard()">${isMr ? 'पुढे' : 'Next'} <span class="fc-btn-icon">▶</span></button>
       </div>
     </div>
   `;
@@ -2386,6 +2648,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Initial render
+  updateAppLabels(STATE.lang);
   navigate('home');
 });
 
@@ -2407,3 +2670,6 @@ window.dismissInstall = dismissInstall;
 window.APP_DATA = APP_DATA;
 window.handleSearch = handleSearch;
 window.renderMpscGK = renderMpscGK;
+window.toggleLang = toggleLang;
+window.updateAppLabels = updateAppLabels;
+

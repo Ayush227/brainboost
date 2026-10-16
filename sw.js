@@ -1,4 +1,4 @@
-const CACHE_NAME = 'brainboost-v2';
+const CACHE_NAME = 'brainboost-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const urlsToCache = [
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './js/topic_shortcuts.js',
   './js/data.js',
   './js/mpsc_gs_data.js',
   './js/gs_history.js',
@@ -36,8 +37,20 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Network-first strategy for instant development updates & offline fallback
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
+    fetch(event.request)
+      .then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
+
